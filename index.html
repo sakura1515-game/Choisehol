@@ -4,7 +4,6 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>초이스 홀덤 (Choice Hold'em) - 온라인 멀티플레이</title>
-  <!-- 무료 P2P 웹소켓/WebRTC 라이브러리 PeerJS CDN -->
   <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -52,10 +51,7 @@
       flex-direction: column;
       gap: 8px;
     }
-    .join-row {
-      display: flex;
-      gap: 6px;
-    }
+    .join-row { display: flex; gap: 6px; }
     input[type="text"] {
       flex: 1;
       padding: 8px;
@@ -91,6 +87,16 @@
       justify-content: space-between;
       align-items: center;
     }
+    .bgm-btn {
+      background: transparent;
+      border: 1px solid rgba(255,255,255,0.3);
+      padding: 2px 6px;
+      font-size: 10px;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    .bgm-btn:hover { background: rgba(255,255,255,0.1); }
+
     .status-msg {
       font-weight: bold;
       color: #f1c40f;
@@ -245,9 +251,7 @@
       padding: 1px 6px;
       border-radius: 8px;
     }
-    .hand-badge.opp {
-      background: #2980b9;
-    }
+    .hand-badge.opp { background: #2980b9; }
 
     .controls {
       display: grid;
@@ -327,6 +331,9 @@
 <div id="container">
   <!-- 로비 / 매치메이킹 화면 -->
   <div id="screen-menu">
+    <div style="display:flex; justify-content:flex-end; margin-bottom:4px;">
+      <button id="btnMenuBgm" class="bgm-btn" onclick="toggleBgm()">🎵 BGM 켜기</button>
+    </div>
     <h2 style="margin-bottom:4px;">🃏 초이스 홀덤</h2>
     <p style="font-size: 11px; color: #a4b0be;">온라인 실시간 1:1 대전 & AI</p>
 
@@ -355,7 +362,7 @@
     <header>
       <span>R<b id="txtRound">1</b> (앤티:<b id="txtAnte">1</b>)</span>
       <div id="txtStatus" class="status-msg">준비 중...</div>
-      <span id="txtCarryOverPot" class="hidden" style="color: #e67e22; font-size: 10px;">이월:<b id="txtCarryVal">0</b></span>
+      <button id="btnGameBgm" class="bgm-btn" onclick="toggleBgm()">🎵 BGM</button>
     </header>
 
     <!-- 상대 플레이어 -->
@@ -442,9 +449,97 @@
 
 <script>
   let audioCtx = null;
+  let bgmInterval = null;
+  let isBgmPlaying = false;
+  let bgmStep = 0;
+
   function initAudio() {
     if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     if (audioCtx.state === 'suspended') audioCtx.resume();
+  }
+
+  // Web Audio 기반 카지노 라운지 재즈 BGM 생성기
+  const chords = [
+    { root: 146.83, notes: [261.63, 311.13, 369.99] }, // Dm7 (D3, C4, Eb4, F#4)
+    { root: 196.00, notes: [246.94, 293.66, 349.23] }, // G7  (G3, B3, D4, F4)
+    { root: 130.81, notes: [246.94, 329.63, 392.00] }, // Cmaj7 (C3, B3, E4, G4)
+    { root: 220.00, notes: [261.63, 329.63, 392.00] }  // Am7 (A3, C4, E4, G4)
+  ];
+
+  function playBgmBeat() {
+    if (!isBgmPlaying || !audioCtx) return;
+
+    const now = audioCtx.currentTime;
+    const chordIndex = Math.floor(bgmStep / 4) % chords.length;
+    const beatInBar = bgmStep % 4;
+    const currentChord = chords[chordIndex];
+
+    // 1. 워킹 베이스 (Quarter Note Bass)
+    const bassOsc = audioCtx.createOscillator();
+    const bassGain = audioCtx.createGain();
+    bassOsc.type = 'triangle';
+    let bassFreq = currentChord.root;
+    if (beatInBar === 1) bassFreq *= 1.25;
+    else if (beatInBar === 2) bassFreq *= 1.5;
+    else if (beatInBar === 3) bassFreq *= 1.125;
+
+    bassOsc.frequency.setValueAtTime(bassFreq, now);
+    bassGain.gain.setValueAtTime(0.08, now);
+    bassGain.gain.exponentialRampToValueAtTime(0.001, now + 0.38);
+    bassOsc.connect(bassGain);
+    bassGain.connect(audioCtx.destination);
+    bassOsc.start(now);
+    bassOsc.stop(now + 0.4);
+
+    // 2. 일렉트릭 피아노 컴핑 (Syncopated Piano Chords)
+    if (beatInBar === 0 || beatInBar === 2) {
+      currentChord.notes.forEach((freq, idx) => {
+        const chordOsc = audioCtx.createOscillator();
+        const chordGain = audioCtx.createGain();
+        chordOsc.type = 'sine';
+        chordOsc.frequency.setValueAtTime(freq, now);
+        chordGain.gain.setValueAtTime(0.02, now);
+        chordGain.gain.exponentialRampToValueAtTime(0.0005, now + 0.6);
+        chordOsc.connect(chordGain);
+        chordGain.connect(audioCtx.destination);
+        chordOsc.start(now);
+        chordOsc.stop(now + 0.65);
+      });
+    }
+
+    bgmStep = (bgmStep + 1) % 16;
+  }
+
+  function startBgm() {
+    initAudio();
+    if (isBgmPlaying) return;
+    isBgmPlaying = true;
+    bgmStep = 0;
+    bgmInterval = setInterval(playBgmBeat, 460); // ~130 BPM
+    updateBgmButtons(true);
+  }
+
+  function stopBgm() {
+    isBgmPlaying = false;
+    if (bgmInterval) {
+      clearInterval(bgmInterval);
+      bgmInterval = null;
+    }
+    updateBgmButtons(false);
+  }
+
+  function toggleBgm() {
+    playSound('click');
+    if (isBgmPlaying) stopBgm();
+    else startBgm();
+  }
+
+  function updateBgmButtons(playing) {
+    const text = playing ? '🎵 BGM 켜짐' : '🔇 BGM 꺼짐';
+    const menuBtn = document.getElementById("btnMenuBgm");
+    const gameBtn = document.getElementById("btnGameBgm");
+    if (menuBtn) menuBtn.innerText = text;
+    if (gameBtn) gameBtn.innerText = text;
   }
 
   function playSound(type) {
@@ -628,6 +723,7 @@
 
   function createOnlineRoom() {
     playSound('click');
+    startBgm();
     const roomCode = Math.random().toString(36).substring(2, 7).toUpperCase();
     const peerId = "choldem_" + roomCode;
 
@@ -656,6 +752,7 @@
 
   function joinOnlineRoom() {
     playSound('click');
+    startBgm();
     const inputCode = document.getElementById("inputRoomCode").value.trim().toUpperCase();
     if (inputCode.length !== 5) {
       alert("5자리 방 코드를 입력하세요.");
@@ -764,6 +861,7 @@
     gameMode = 'AI';
     myPlayerIdx = 0;
     playSound('click');
+    startBgm();
     round = 1; pot = 0; carryOverPot = 0; dealerIdx = 0; isTieCarryOver = false;
     p1 = { name: "나", chips: 20, startChips: 20, currentBet: 0, totalRoundBet: 0, hand: [], folded: false };
     p2 = { name: "AI", chips: 20, startChips: 20, currentBet: 0, totalRoundBet: 0, hand: [], folded: false };
@@ -1270,14 +1368,6 @@
     document.getElementById("txtAnte").innerText = getAnte();
     document.getElementById("txtPot").innerText = pot;
 
-    const carryEl = document.getElementById("txtCarryOverPot");
-    if (carryOverPot > 0) {
-      carryEl.classList.remove("hidden");
-      document.getElementById("txtCarryVal").innerText = carryOverPot;
-    } else {
-      carryEl.classList.add("hidden");
-    }
-
     const myPlayer = myPlayerIdx === 0 ? p1 : p2;
     const oppPlayer = myPlayerIdx === 0 ? p2 : p1;
 
@@ -1308,7 +1398,6 @@
       document.getElementById("myHandEval").innerText = `-`;
     }
 
-    // 쇼다운 시 상대방 족보 뱃지 표시
     const oppBadge = document.getElementById("oppHandEval");
     if (isShowdown && oppPlayer.hand.length === 2 && !oppPlayer.folded) {
       const oppEval = evaluateHand([...oppPlayer.hand, ...communityCards], oppPlayer.hand);
