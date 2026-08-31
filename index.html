@@ -41,7 +41,7 @@
       display: flex;
       flex-direction: column;
       gap: 10px;
-      margin-top: 15px;
+      margin-top: 12px;
     }
     .online-box {
       background: #243342;
@@ -77,6 +77,51 @@
     }
     button:hover:not(:disabled) { background: #d35400; }
     button:disabled { background: #4b6584; cursor: not-allowed; opacity: 0.5; }
+
+    .btn-secondary {
+      background: #34495e;
+      border: 1px solid #4b6584;
+    }
+    .btn-secondary:hover:not(:disabled) {
+      background: #4b6584;
+    }
+
+    /* 규칙 모달 팝업 스타일 */
+    #rulesModal {
+      position: fixed;
+      top: 0; left: 0; width: 100vw; height: 100vh;
+      background: rgba(0, 0, 0, 0.75);
+      z-index: 10000;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 12px;
+    }
+    .modal-content {
+      background: #1a252f;
+      width: 100%;
+      max-width: 480px;
+      height: 85vh;
+      border-radius: 12px;
+      border: 1.5px solid #f1c40f;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.8);
+    }
+    .modal-header {
+      background: #2c3e50;
+      padding: 8px 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .modal-body {
+      flex: 1;
+      width: 100%;
+      border: none;
+      background: #0f171e;
+    }
 
     header {
       background: #2c3e50;
@@ -347,6 +392,8 @@
           <button onclick="joinOnlineRoom()" style="background: #2980b9;">입장하기</button>
         </div>
       </div>
+
+      <button class="btn-secondary" onclick="openRulesModal()">📜 게임 룰 / 족보 보기</button>
     </div>
 
     <div id="roomWaitArea" class="room-wait-msg hidden">
@@ -360,7 +407,10 @@
     <header>
       <span>R<b id="txtRound">1</b> (앤티:<b id="txtAnte">1</b>)</span>
       <div id="txtStatus" class="status-msg">준비 중...</div>
-      <button id="btnGameBgm" class="bgm-btn" onclick="toggleBgm()">🎵 BGM</button>
+      <div style="display: flex; gap: 4px;">
+        <button class="bgm-btn" onclick="openRulesModal()">📜 룰</button>
+        <button id="btnGameBgm" class="bgm-btn" onclick="toggleBgm()">🎵 BGM</button>
+      </div>
     </header>
 
     <div id="p2Box" class="player-box">
@@ -441,11 +491,34 @@
   </div>
 </div>
 
+<div id="rulesModal" class="hidden">
+  <div class="modal-content">
+    <div class="modal-header">
+      <span style="font-weight:bold; font-size:13px; color:#f1c40f;">📜 초이스 홀덤 규칙</span>
+      <div style="display:flex; gap:6px;">
+        <button onclick="window.open('rules.html', '_blank')" class="bgm-btn">새 창으로 열기</button>
+        <button onclick="closeRulesModal()" class="bgm-btn" style="background:#c0392b; border:none; color:#fff;">✕ 닫기</button>
+      </div>
+    </div>
+    <iframe id="rulesFrame" class="modal-body" src="rules.html"></iframe>
+  </div>
+</div>
+
 <script>
   let audioCtx = null;
   let bgmInterval = null;
   let isBgmPlaying = false;
   let bgmStep = 0;
+
+  function openRulesModal() {
+    playSound('click');
+    document.getElementById("rulesModal").classList.remove("hidden");
+  }
+
+  function closeRulesModal() {
+    playSound('click');
+    document.getElementById("rulesModal").classList.add("hidden");
+  }
 
   function initAudio() {
     if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -888,7 +961,6 @@
     for (let n = 1; n <= 5; n++) {
       for (let i = 0; i < 4; i++) deck.push(n);
     }
-    // 표준 피셔-예이츠 무작위 셔플
     for (let i = deck.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
       [deck[i], deck[j]] = [deck[j], deck[i]];
@@ -1069,7 +1141,6 @@
         opponent.chips += wonPot;
         pot = 0;
         dealerIdx = 1 - dealerIdx;
-        // 폴드 시에는 패 조합 결과(카드 족보)를 노출하지 않고 결과만 표기
         endRound(`${current.name} 폴드! 🏆 <b>${opponent.name} 승리</b> (+${wonPot} 칩)`);
       });
       return;
@@ -1386,10 +1457,8 @@
     document.getElementById("p2Box").className = `player-box ${turnIdx !== myPlayerIdx && phase.startsWith('BET') ? 'active-turn' : ''}`;
 
     const isFolded = p1.folded || p2.folded;
-    // 폴드가 아닌 정상 쇼다운 또는 라운드 종료일 때만 상대 패 공개
     const isShowdown = (phase === 'SHOWDOWN' || phase === 'ROUND_OVER') && !isFolded;
 
-    // 내 족보 표시 (내가 폴드하지 않았을 때만)
     if (myPlayer.hand.length > 0 && !myPlayer.folded) {
       const myEval = evaluateHand([...myPlayer.hand, ...communityCards], myPlayer.hand);
       document.getElementById("myHandEval").innerText = `${RANK_NAMES[myEval.rank]}`;
@@ -1398,7 +1467,6 @@
       document.getElementById("myHandEval").classList.add("hidden");
     }
 
-    // 상대 족보 표시 (폴드가 아니고 정상 쇼다운일 때만)
     const oppBadge = document.getElementById("oppHandEval");
     if (isShowdown && oppPlayer.hand.length === 2 && !oppPlayer.folded) {
       const oppEval = evaluateHand([...oppPlayer.hand, ...communityCards], oppPlayer.hand);
@@ -1408,7 +1476,6 @@
       oppBadge.classList.add("hidden");
     }
 
-    // 카드 렌더링: 내가 폴드했으면 내 카드도 뒷면 처리, 상대는 쇼다운일 때만 앞면 공개
     renderCards("p1Cards", myPlayer.folded ? myPlayer.hand.map(() => '?') : myPlayer.hand);
     renderCards("p2Cards", isShowdown ? oppPlayer.hand : oppPlayer.hand.map(() => '?'));
     renderCards("communityCards", communityCards);
