@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>초이스 홀덤 규칙 안내</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Pretendard", "Segoe UI", sans-serif;
+      background: #0f171e;
+      color: #f1f2f6;
+      line-height: 1.6;
+      padding: 16px;
+      max-width: 600px;
+      margin: 0 auto;
+    }
+    h1 { font-size: 20px; color: #f1c40f; margin-bottom: 12px; border-bottom: 2px solid #e67e22; padding-bottom: 6px; }
+    h2 { font-size: 15px; color: #e67e22; margin-top: 14px; margin-bottom: 6px; }
+    p, li { font-size: 13px; color: #ced6e0; margin-bottom: 6px; }
+    ul, ol { padding-left: 18px; margin-bottom: 8px; }
+    .highlight { color: #f1c40f; font-weight: bold; }
+    .box {
+      background: #243342;
+      border-radius: 8px;
+      padding: 10px 12px;
+      margin-bottom: 12px;
+      border: 1px solid #34495e;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12px;
+      margin-top: 6px;
+    }
+    th, td {
+      border: 1px solid #4b6584;
+      padding: 6px 8px;
+      text-align: left;
+    }
+    th { background: #1a252f; color: #f1c40f; }
+  </style>
+</head>
+<body>
+  <h1>🃏 초이스 홀덤 (Choice Hold'em) 룰</h1>
+
+  <div class="box">
+    <h2>1. 카드 구성 및 기본 정보</h2>
+    <ul>
+      <li>카드: <span class="highlight">1, 2, 3, 4, 5</span> (각 4장씩 총 20장)</li>
+      <li>시작 칩: 각 20개</li>
+      <li>기본 앤티(참가비): 1칩 (10라운드마다 1칩씩 증가)</li>
+      <li>카드 분배: 조작 없는 100% 무작위 피셔-예이츠 셔플</li>
+    </ul>
+  </div>
+
+  <div class="box">
+    <h2>2. 게임 진행 순서</h2>
+    <ol>
+      <li><b>앤티 지불 & 초기 패 분배:</b> 각자 비공개 1장, 커뮤니티(중앙) 3장 오픈.</li>
+      <li><b>1차 베팅 (BET 1):</b> 선 플레이어부터 베팅/레이즈 진행.</li>
+      <li><b>초이스 단계:</b>
+        <ul>
+          <li>새로운 카드 2장이 등장합니다.</li>
+          <li><b>선(Leader):</b> 2장 중 1장을 <span class="highlight">공개(앞면)</span>합니다.</li>
+          <li><b>후(Follower):</b> 공개된 카드와 비공개 카드 중 <span class="highlight">원하는 1장 선택</span>하여 가져갑니다.</li>
+          <li>선은 남은 1장을 자동으로 가져옵니다.</li>
+        </ul>
+      </li>
+      <li><b>2차 베팅 (BET 2):</b> 2장의 핸드가 완성된 후 추가 베팅/레이즈 진행.</li>
+      <li><b>쇼다운 / 판정:</b> [내 카드 2장 + 커뮤니티 3장] 총 5장으로 족보 판정.</li>
+    </ol>
+  </div>
+
+  <div class="box">
+    <h2>3. 족보 순위 (높은 순)</h2>
+    <table>
+      <tr><th>순위</th><th>족보</th><th>설명</th></tr>
+      <tr><td>1</td><td><b>포카드</b></td><td>동일 숫자 4장</td></tr>
+      <tr><td>2</td><td><b>풀하우스</b></td><td>동일 숫자 3장 + 2장</td></tr>
+      <tr><td>3</td><td><b>스트레이트</b></td><td>연속된 숫자 5장 (1-2-3-4-5)</td></tr>
+      <tr><td>4</td><td><b>트리플</b></td><td>동일 숫자 3장</td></tr>
+      <tr><td>5</td><td><b>투페어</b></td><td>동일 숫자 2장씩 2쌍</td></tr>
+      <tr><td>6</td><td><b>원페어</b></td><td>동일 숫자 2장 1쌍</td></tr>
+      <tr><td>7</td><td><b>하이카드</b></td><td>위 조건이 없을 때 높은 숫자 비교</td></tr>
+    </table>
+  </div>
+
+  <div class="box">
+    <h2>4. 특수 규칙</h2>
+    <ul>
+      <li><b>폴드(Fold) 시:</b> 상대방과 나의 패는 절대 공개되지 않으며, 남아있는 팟을 상대가 획득합니다.</li>
+      <li><b>동점(Tie) 시:</b> 팟은 다음 라운드로 전액 이월되며 선(Leader) 권한이 유지됩니다.</li>
+    </ul>
+  </div>
+</body>
+</html>
