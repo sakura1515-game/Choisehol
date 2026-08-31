@@ -888,6 +888,7 @@
     for (let n = 1; n <= 5; n++) {
       for (let i = 0; i < 4; i++) deck.push(n);
     }
+    // 표준 피셔-예이츠 무작위 셔플
     for (let i = deck.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
       [deck[i], deck[j]] = [deck[j], deck[i]];
@@ -898,7 +899,6 @@
     playSound('deal');
     const ante = getAnte();
 
-    // 이월 상태가 아닌 정상 라운드에서만 0칩 게임오버 체크
     if (!isTieCarryOver && (p1.chips <= 0 || p2.chips <= 0)) {
       handleFinalGameOver();
       return;
@@ -913,8 +913,6 @@
     } else {
       carryOverPot = pot;
     }
-    // 이월 라운드 시작했으므로 플래그 리셋 (이번 라운드 종료 시 승부 결과에 따라 재설정)
-    const wasTieCarryOver = isTieCarryOver;
     isTieCarryOver = false;
 
     const p1Ante = Math.min(p1.chips, ante);
@@ -937,7 +935,6 @@
     document.getElementById("choiceArea").classList.add("hidden");
     document.getElementById("oppHandEval").classList.add("hidden");
 
-    // 잔여 칩이 없는 경우(올인 이월 등) 베팅 없이 바로 초이스 진행
     if (p1.chips === 0 || p2.chips === 0) {
       phase = 'CHOICE_SETUP';
       choiceCards = [deck.pop(), deck.pop()];
@@ -1072,6 +1069,7 @@
         opponent.chips += wonPot;
         pot = 0;
         dealerIdx = 1 - dealerIdx;
+        // 폴드 시에는 패 조합 결과(카드 족보)를 노출하지 않고 결과만 표기
         endRound(`${current.name} 폴드! 🏆 <b>${opponent.name} 승리</b> (+${wonPot} 칩)`);
       });
       return;
@@ -1289,11 +1287,10 @@
       flyChips('potChipStack', winnerBoxId, Math.min(wonPot, 6), () => {
         winner.chips += wonPot;
         pot = 0;
-        dealerIdx = 1 - dealerIdx; // 승자가 나왔으므로 다음 라운드는 선 교체
+        dealerIdx = 1 - dealerIdx;
         endRound(`${evalDetailHtml}🏆 <b>${winner.name} 승리!</b> (+${wonPot} 칩)${refundMsg}`);
       });
     } else {
-      // 무승부인 경우: dealerIdx(선)를 바꾸지 않고 이월 유지!
       playSound('chip');
       isTieCarryOver = true;
       endRound(`${evalDetailHtml}⚖️ <b>동점 무승부!</b> 팟(${pot} 칩) 이월 및 현재 선 유지${refundMsg}`);
@@ -1388,15 +1385,20 @@
     document.getElementById("p1Box").className = `player-box ${turnIdx === myPlayerIdx && phase.startsWith('BET') ? 'active-turn' : ''}`;
     document.getElementById("p2Box").className = `player-box ${turnIdx !== myPlayerIdx && phase.startsWith('BET') ? 'active-turn' : ''}`;
 
-    const isShowdown = phase === 'SHOWDOWN' || phase === 'ROUND_OVER';
+    const isFolded = p1.folded || p2.folded;
+    // 폴드가 아닌 정상 쇼다운 또는 라운드 종료일 때만 상대 패 공개
+    const isShowdown = (phase === 'SHOWDOWN' || phase === 'ROUND_OVER') && !isFolded;
 
-    if (myPlayer.hand.length > 0) {
+    // 내 족보 표시 (내가 폴드하지 않았을 때만)
+    if (myPlayer.hand.length > 0 && !myPlayer.folded) {
       const myEval = evaluateHand([...myPlayer.hand, ...communityCards], myPlayer.hand);
       document.getElementById("myHandEval").innerText = `${RANK_NAMES[myEval.rank]}`;
+      document.getElementById("myHandEval").classList.remove("hidden");
     } else {
-      document.getElementById("myHandEval").innerText = `-`;
+      document.getElementById("myHandEval").classList.add("hidden");
     }
 
+    // 상대 족보 표시 (폴드가 아니고 정상 쇼다운일 때만)
     const oppBadge = document.getElementById("oppHandEval");
     if (isShowdown && oppPlayer.hand.length === 2 && !oppPlayer.folded) {
       const oppEval = evaluateHand([...oppPlayer.hand, ...communityCards], oppPlayer.hand);
@@ -1406,7 +1408,8 @@
       oppBadge.classList.add("hidden");
     }
 
-    renderCards("p1Cards", myPlayer.hand);
+    // 카드 렌더링: 내가 폴드했으면 내 카드도 뒷면 처리, 상대는 쇼다운일 때만 앞면 공개
+    renderCards("p1Cards", myPlayer.folded ? myPlayer.hand.map(() => '?') : myPlayer.hand);
     renderCards("p2Cards", isShowdown ? oppPlayer.hand : oppPlayer.hand.map(() => '?'));
     renderCards("communityCards", communityCards);
 
