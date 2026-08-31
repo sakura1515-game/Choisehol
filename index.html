@@ -3,7 +3,9 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>초이스 홀덤 (Choice Hold'em)</title>
+  <title>초이스 홀덤 (Choice Hold'em) - 온라인 멀티플레이</title>
+  <!-- 무료 P2P 웹소켓/WebRTC 라이브러리 PeerJS CDN -->
+  <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
@@ -35,16 +37,37 @@
       text-align: center;
     }
 
-    /* 로비 메뉴 */
-    #screen-menu {
-      margin: auto 0;
-    }
+    #screen-menu { margin: auto 0; }
     .menu-box {
       display: flex;
       flex-direction: column;
       gap: 10px;
       margin-top: 15px;
     }
+    .online-box {
+      background: #243342;
+      padding: 10px;
+      border-radius: 8px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .join-row {
+      display: flex;
+      gap: 6px;
+    }
+    input[type="text"] {
+      flex: 1;
+      padding: 8px;
+      border-radius: 6px;
+      border: 1px solid #7f8c8d;
+      background: #0f171e;
+      color: #fff;
+      font-size: 14px;
+      text-align: center;
+      text-transform: uppercase;
+    }
+
     button {
       background: #e67e22;
       border: none;
@@ -59,7 +82,6 @@
     button:hover:not(:disabled) { background: #d35400; }
     button:disabled { background: #4b6584; cursor: not-allowed; opacity: 0.5; }
 
-    /* 헤더 */
     header {
       background: #2c3e50;
       padding: 4px 8px;
@@ -79,7 +101,6 @@
       text-overflow: ellipsis;
     }
 
-    /* 플레이어 대시보드 (가로형 2열 분할) */
     .player-box {
       background: #243342;
       padding: 6px 8px;
@@ -117,14 +138,9 @@
       flex: 1;
       text-align: center;
     }
-    .chip-stats-grid span b {
-      display: block;
-      font-size: 11px;
-      color: #fff;
-    }
+    .chip-stats-grid span b { display: block; font-size: 11px; color: #fff; }
     .chip-stats-grid .highlight b { color: #f1c40f; }
 
-    /* 테이블 중앙 및 팟 */
     .table-center {
       background: #145a32;
       padding: 6px 8px;
@@ -145,7 +161,6 @@
     }
     .pot-dashboard b { color: #f1c40f; font-size: 13px; }
 
-    /* 슬림 카드 */
     .cards-row {
       display: flex;
       justify-content: center;
@@ -180,7 +195,6 @@
       to { transform: translateY(-3px); }
     }
 
-    /* 칩 스택 */
     .chip-stack-container {
       display: flex;
       align-items: center;
@@ -232,7 +246,6 @@
       border-radius: 8px;
     }
 
-    /* 컨트롤 */
     .controls {
       display: grid;
       grid-template-columns: 1fr 1fr 1fr;
@@ -273,7 +286,6 @@
       background: #4b6584;
     }
 
-    /* 결과 오버레이 박스 */
     .result-box {
       background: #2c3e50;
       border-radius: 8px;
@@ -288,22 +300,46 @@
       margin-top: 6px;
     }
     .result-buttons button { flex: 1; padding: 6px; }
+
+    .room-wait-msg {
+      background: #2c3e50;
+      padding: 12px;
+      border-radius: 8px;
+      font-size: 14px;
+      color: #f1c40f;
+      margin: 10px 0;
+    }
   </style>
 </head>
 <body>
 
 <div id="container">
-  <!-- 로비 -->
+  <!-- 로비 / 매치메이킹 화면 -->
   <div id="screen-menu">
     <h2 style="margin-bottom:4px;">🃏 초이스 홀덤</h2>
-    <p style="font-size: 11px; color: #a4b0be;">1~5 숫자 카드 20장 심리전</p>
+    <p style="font-size: 11px; color: #a4b0be;">온라인 실시간 1:1 대전 & AI</p>
+
     <div class="menu-box">
-      <button onclick="startGame(true)">🤖 AI와 대전하기</button>
-      <button onclick="startGame(false)" style="background: #2980b9;">👥 2인 로컬 대전</button>
+      <button onclick="startAiGame()">🤖 AI와 대전하기</button>
+
+      <div class="online-box">
+        <div style="font-size: 12px; color: #ced6e0; font-weight: bold;">🌐 온라인 친구 대전</div>
+        <button onclick="createOnlineRoom()" style="background: #27ae60;">방 만들기 (코드 생성)</button>
+        <div class="join-row">
+          <input type="text" id="inputRoomCode" placeholder="방 코드 5자리" maxlength="5">
+          <button onclick="joinOnlineRoom()" style="background: #2980b9;">입장하기</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="roomWaitArea" class="room-wait-msg hidden">
+      <div>방 코드: <b id="displayRoomCode" style="font-size: 18px; color: #2ecc71;">-</b></div>
+      <div style="font-size: 11px; color: #ced6e0; margin-top: 4px;">친구에게 위 코드를 알려주세요. 접속 대기 중...</div>
+      <button onclick="cancelOnlineRoom()" style="margin-top: 8px; background: #c0392b; padding: 4px 8px; font-size: 11px;">취소</button>
     </div>
   </div>
 
-  <!-- 게임 메인 -->
+  <!-- 게임 메인 화면 -->
   <div id="screen-game" class="hidden" style="display: flex; flex-direction: column; justify-content: space-between; height: 100%;">
     <header>
       <span>R<b id="txtRound">1</b> (앤티:<b id="txtAnte">1</b>)</span>
@@ -311,10 +347,10 @@
       <span id="txtCarryOverPot" class="hidden" style="color: #e67e22; font-size: 10px;">이월:<b id="txtCarryVal">0</b></span>
     </header>
 
-    <!-- 상대 플레이어 (P2) -->
+    <!-- 상대 플레이어 -->
     <div id="p2Box" class="player-box">
       <div class="player-header">
-        <span><span id="p2Name">상대 (AI)</span><span id="p2Badge" class="badge hidden">선</span></span>
+        <span><span id="p2Name">상대</span><span id="p2Badge" class="badge hidden">선</span></span>
         <div id="p2ChipStack" class="chip-stack-container"></div>
       </div>
       <div class="player-main-content">
@@ -335,17 +371,16 @@
       </div>
       <div class="cards-row" id="communityCards"></div>
 
-      <!-- 초이스 영역 -->
       <div id="choiceArea" class="hidden" style="border-top: 1px dashed rgba(255,255,255,0.2); padding-top: 3px;">
         <div id="choiceTitle" style="font-size: 11px; color: #f1c40f;">초이스 카드</div>
         <div class="cards-row" id="choiceCards" style="min-height: 48px;"></div>
       </div>
     </div>
 
-    <!-- 내 플레이어 (P1) -->
+    <!-- 내 플레이어 -->
     <div id="p1Box" class="player-box">
       <div class="player-header">
-        <span><span id="p1Name">플레이어 1</span><span id="p1Badge" class="badge hidden">선</span></span>
+        <span><span id="p1Name">나</span><span id="p1Badge" class="badge hidden">선</span></span>
         <div id="myHandEval" class="hand-badge">-</div>
         <div id="p1ChipStack" class="chip-stack-container"></div>
       </div>
@@ -359,12 +394,12 @@
       </div>
     </div>
 
-    <!-- 하단 컨트롤 / 결과 패널 -->
+    <!-- 하단 컨트롤 / 결과창 -->
     <div>
       <div id="actionControls" class="controls">
-        <button id="btnCall" onclick="handleAction('call')">베팅 1</button>
-        <button id="btnRaise" onclick="handleAction('raise')">레이즈</button>
-        <button id="btnFold" onclick="handleAction('fold')" style="background:#c0392b;">폴드</button>
+        <button id="btnCall" onclick="onHumanAction('call')">베팅 1</button>
+        <button id="btnRaise" onclick="onHumanAction('raise')">레이즈</button>
+        <button id="btnFold" onclick="onHumanAction('fold')" style="background:#c0392b;">폴드</button>
       </div>
 
       <div id="raiseContainer" class="raise-container">
@@ -383,7 +418,7 @@
 
       <div id="resultArea" class="result-box hidden">
         <div id="resultText"></div>
-        <button id="btnNext" onclick="nextRound()" style="margin-top: 4px; width: 100%; background: #27ae60; padding: 6px;">다음 라운드</button>
+        <button id="btnNext" onclick="onHumanNextRound()" style="margin-top: 4px; width: 100%; background: #27ae60; padding: 6px;">다음 라운드</button>
         <div id="gameOverButtons" class="result-buttons hidden">
           <button onclick="restartGame()" style="background: #27ae60;">🔄 재시작</button>
           <button onclick="goToMenu()" style="background: #c0392b;">🏠 로비</button>
@@ -559,7 +594,12 @@
   };
   const RANK_NAMES = ["하이카드", "원페어", "투페어", "트리플", "스트레이트", "풀하우스", "포카드"];
 
-  let isPve = true;
+  // 네트워크 및 모드 변수
+  let gameMode = 'AI'; // 'AI' | 'ONLINE_HOST' | 'ONLINE_GUEST'
+  let peer = null;
+  let conn = null;
+  let myPlayerIdx = 0; // 0: Host / Local Player, 1: Guest / AI
+
   let round = 1;
   let pot = 0;
   let carryOverPot = 0;
@@ -575,16 +615,149 @@
   let p1 = { name: "나", chips: 20, startChips: 20, currentBet: 0, totalRoundBet: 0, hand: [], folded: false };
   let p2 = { name: "상대", chips: 20, startChips: 20, currentBet: 0, totalRoundBet: 0, hand: [], folded: false };
 
-  function startGame(pveMode) {
+  // ================= P2P 온라인 네트워킹 =================
+  function createOnlineRoom() {
     playSound('click');
-    isPve = pveMode;
-    round = 1;
-    pot = 0;
-    carryOverPot = 0;
-    dealerIdx = 0;
-    isTieCarryOver = false;
-    p1 = { name: "플레이어 1", chips: 20, startChips: 20, currentBet: 0, totalRoundBet: 0, hand: [], folded: false };
-    p2 = { name: isPve ? "AI" : "플레이어 2", chips: 20, startChips: 20, currentBet: 0, totalRoundBet: 0, hand: [], folded: false };
+    const roomCode = Math.random().toString(36).substring(2, 7).toUpperCase();
+    const peerId = "choldem_" + roomCode;
+
+    if (peer) peer.destroy();
+    peer = new Peer(peerId);
+
+    peer.on('open', () => {
+      gameMode = 'ONLINE_HOST';
+      myPlayerIdx = 0;
+      document.getElementById("displayRoomCode").innerText = roomCode;
+      document.getElementById("roomWaitArea").classList.remove("hidden");
+    });
+
+    peer.on('connection', (c) => {
+      conn = c;
+      setupConnectionHandlers();
+      document.getElementById("roomWaitArea").classList.add("hidden");
+      startOnlineGameAsHost();
+    });
+
+    peer.on('error', (err) => {
+      alert("방 생성 오류 또는 이미 존재하는 방 코드입니다. 다시 시도해주세요.");
+      cancelOnlineRoom();
+    });
+  }
+
+  function joinOnlineRoom() {
+    playSound('click');
+    const inputCode = document.getElementById("inputRoomCode").value.trim().toUpperCase();
+    if (inputCode.length !== 5) {
+      alert("5자리 방 코드를 입력하세요.");
+      return;
+    }
+
+    if (peer) peer.destroy();
+    peer = new Peer();
+
+    peer.on('open', () => {
+      gameMode = 'ONLINE_GUEST';
+      myPlayerIdx = 1;
+      const targetPeerId = "choldem_" + inputCode;
+      conn = peer.connect(targetPeerId);
+      setupConnectionHandlers();
+    });
+
+    peer.on('error', (err) => {
+      alert("해당 방을 찾을 수 없거나 연결할 수 없습니다.");
+    });
+  }
+
+  function cancelOnlineRoom() {
+    if (peer) peer.destroy();
+    peer = null;
+    conn = null;
+    document.getElementById("roomWaitArea").classList.add("hidden");
+  }
+
+  function setupConnectionHandlers() {
+    conn.on('open', () => {
+      if (gameMode === 'ONLINE_GUEST') {
+        document.getElementById("p1Name").innerText = "나";
+        document.getElementById("p2Name").innerText = "상대 (호스트)";
+        document.getElementById("screen-menu").classList.add("hidden");
+        document.getElementById("screen-game").classList.remove("hidden");
+      }
+    });
+
+    conn.on('data', (data) => {
+      if (data.type === 'SYNC_STATE') {
+        applySyncedState(data.state);
+      } else if (data.type === 'ACTION') {
+        if (gameMode === 'ONLINE_HOST') {
+          handleAction(data.action, data.raiseVal);
+          broadcastState();
+        }
+      } else if (data.type === 'CHOICE_SETUP') {
+        if (gameMode === 'ONLINE_HOST') {
+          handleChoiceSetup(data.idx);
+          broadcastState();
+        }
+      } else if (data.type === 'CHOICE_PICK') {
+        if (gameMode === 'ONLINE_HOST') {
+          handleChoicePick(data.idx);
+          broadcastState();
+        }
+      } else if (data.type === 'NEXT_ROUND') {
+        if (gameMode === 'ONLINE_HOST') {
+          nextRound();
+        }
+      }
+    });
+
+    conn.on('close', () => {
+      alert("상대방과의 연결이 끊어졌습니다.");
+      goToMenu();
+    });
+  }
+
+  function broadcastState() {
+    if (gameMode === 'ONLINE_HOST' && conn && conn.open) {
+      const state = {
+        round, pot, carryOverPot, dealerIdx, turnIdx, phase,
+        communityCards, choiceCards, choiceOpenIdx, isTieCarryOver,
+        p1, p2
+      };
+      conn.send({ type: 'SYNC_STATE', state });
+    }
+  }
+
+  function applySyncedState(s) {
+    round = s.round; pot = s.pot; carryOverPot = s.carryOverPot;
+    dealerIdx = s.dealerIdx; turnIdx = s.turnIdx; phase = s.phase;
+    communityCards = s.communityCards; choiceCards = s.choiceCards;
+    choiceOpenIdx = s.choiceOpenIdx; isTieCarryOver = s.isTieCarryOver;
+    p1 = s.p1; p2 = s.p2;
+
+    updateUI();
+  }
+
+  function startOnlineGameAsHost() {
+    round = 1; pot = 0; carryOverPot = 0; dealerIdx = 0; isTieCarryOver = false;
+    p1 = { name: "나 (호스트)", chips: 20, startChips: 20, currentBet: 0, totalRoundBet: 0, hand: [], folded: false };
+    p2 = { name: "상대 (게스트)", chips: 20, startChips: 20, currentBet: 0, totalRoundBet: 0, hand: [], folded: false };
+
+    document.getElementById("p1Name").innerText = p1.name;
+    document.getElementById("p2Name").innerText = p2.name;
+    document.getElementById("screen-menu").classList.add("hidden");
+    document.getElementById("screen-game").classList.remove("hidden");
+
+    startRound();
+  }
+
+  // ================= AI 모드 실행 =================
+  function startAiGame() {
+    gameMode = 'AI';
+    myPlayerIdx = 0;
+    playSound('click');
+    round = 1; pot = 0; carryOverPot = 0; dealerIdx = 0; isTieCarryOver = false;
+    p1 = { name: "나", chips: 20, startChips: 20, currentBet: 0, totalRoundBet: 0, hand: [], folded: false };
+    p2 = { name: "AI", chips: 20, startChips: 20, currentBet: 0, totalRoundBet: 0, hand: [], folded: false };
 
     document.getElementById("p1Name").innerText = p1.name;
     document.getElementById("p2Name").innerText = p2.name;
@@ -596,13 +769,18 @@
 
   function goToMenu() {
     playSound('click');
+    if (peer) peer.destroy();
+    peer = null;
+    conn = null;
     document.getElementById("screen-game").classList.add("hidden");
     document.getElementById("screen-menu").classList.remove("hidden");
+    document.getElementById("roomWaitArea").classList.add("hidden");
   }
 
   function restartGame() {
     playSound('click');
-    startGame(isPve);
+    if (gameMode === 'AI') startAiGame();
+    else if (gameMode === 'ONLINE_HOST') startOnlineGameAsHost();
   }
 
   function getAnte() {
@@ -672,8 +850,10 @@
     flyChips('p1Box', 'potChipStack', p1Ante);
     flyChips('p2Box', 'potChipStack', p2Ante, () => {
       playSound('deal');
-      checkAiTurn();
+      if (gameMode === 'AI') checkAiTurn();
     });
+
+    broadcastState();
   }
 
   function handleFinalGameOver() {
@@ -681,7 +861,8 @@
     const winner = p1.chips > 0 ? p1 : p2;
     const loser = p1.chips <= 0 ? p1 : p2;
 
-    if (winner === p1) playSound('victory');
+    const isMeWinner = (myPlayerIdx === 0 && winner === p1) || (myPlayerIdx === 1 && winner === p2);
+    if (isMeWinner) playSound('victory');
     else playSound('gameover');
 
     const resultArea = document.getElementById("resultArea");
@@ -701,6 +882,7 @@
 
     document.getElementById("txtStatus").innerText = `승자: ${winner.name}`;
     updateUI();
+    broadcastState();
   }
 
   function syncRaiseValue(val) {
@@ -714,9 +896,9 @@
     slider.value = v;
     num.value = v;
 
-    const current = turnIdx === 0 ? p1 : p2;
-    const opponent = turnIdx === 0 ? p2 : p1;
-    const isOpeningBet = current.currentBet === 0 && opponent.currentBet === 0;
+    const me = myPlayerIdx === 0 ? p1 : p2;
+    const opp = myPlayerIdx === 0 ? p2 : p1;
+    const isOpeningBet = me.currentBet === 0 && opp.currentBet === 0;
 
     document.getElementById("btnRaise").innerText = isOpeningBet ? `베팅 ${v}` : `레이즈 +${v}`;
   }
@@ -733,7 +915,44 @@
     syncRaiseValue(slider.max);
   }
 
-  function handleAction(action) {
+  // 플레이어 입력 전달 핸들러 (게스트는 호스트로 전송)
+  function onHumanAction(action) {
+    const raiseVal = parseInt(document.getElementById("raiseNumber").value, 10) || 1;
+    if (gameMode === 'ONLINE_GUEST') {
+      conn.send({ type: 'ACTION', action, raiseVal });
+    } else {
+      handleAction(action, raiseVal);
+      broadcastState();
+    }
+  }
+
+  function onHumanChoiceSetup(idx) {
+    if (gameMode === 'ONLINE_GUEST') {
+      conn.send({ type: 'CHOICE_SETUP', idx });
+    } else {
+      handleChoiceSetup(idx);
+      broadcastState();
+    }
+  }
+
+  function onHumanChoicePick(idx) {
+    if (gameMode === 'ONLINE_GUEST') {
+      conn.send({ type: 'CHOICE_PICK', idx });
+    } else {
+      handleChoicePick(idx);
+      broadcastState();
+    }
+  }
+
+  function onHumanNextRound() {
+    if (gameMode === 'ONLINE_GUEST') {
+      conn.send({ type: 'NEXT_ROUND' });
+    } else {
+      nextRound();
+    }
+  }
+
+  function handleAction(action, customRaise = 1) {
     const current = turnIdx === 0 ? p1 : p2;
     const opponent = turnIdx === 0 ? p2 : p1;
     const currentBoxId = turnIdx === 0 ? 'p1Box' : 'p2Box';
@@ -782,14 +1001,13 @@
       }
     } else if (action === 'raise') {
       const isOpeningBet = current.currentBet === 0 && opponent.currentBet === 0;
-      const raiseVal = parseInt(document.getElementById("raiseNumber").value, 10) || 1;
       let pay = 0;
 
       if (isOpeningBet) {
-        pay = Math.min(current.chips, raiseVal);
+        pay = Math.min(current.chips, customRaise);
       } else {
         const diff = opponent.currentBet - current.currentBet;
-        const total = diff + raiseVal;
+        const total = diff + customRaise;
         pay = Math.min(current.chips, total);
       }
 
@@ -809,7 +1027,7 @@
     }
 
     updateUI();
-    checkAiTurn();
+    if (gameMode === 'AI') checkAiTurn();
   }
 
   function advanceToChoiceOrShowdown() {
@@ -824,7 +1042,7 @@
       return;
     }
     updateUI();
-    checkAiTurn();
+    if (gameMode === 'AI') checkAiTurn();
   }
 
   function handleChoiceSetup(openIdx) {
@@ -833,7 +1051,7 @@
     phase = 'CHOICE_PICK';
     turnIdx = 1 - dealerIdx;
     updateUI();
-    checkAiTurn();
+    if (gameMode === 'AI') checkAiTurn();
   }
 
   function handleChoicePick(pickIdx) {
@@ -856,7 +1074,7 @@
     p2.currentBet = 0;
     turnIdx = dealerIdx;
     updateUI();
-    checkAiTurn();
+    if (gameMode === 'AI') checkAiTurn();
   }
 
   function evaluateHand(handList, holeCards) {
@@ -966,6 +1184,7 @@
     document.getElementById("resultArea").classList.remove("hidden");
     document.getElementById("resultText").innerHTML = msg;
     updateUI();
+    broadcastState();
   }
 
   function nextRound() {
@@ -975,7 +1194,7 @@
   }
 
   function checkAiTurn() {
-    if (!isPve || phase === 'ROUND_OVER' || phase === 'GAME_OVER' || phase === 'SHOWDOWN') return;
+    if (gameMode !== 'AI' || phase === 'ROUND_OVER' || phase === 'GAME_OVER' || phase === 'SHOWDOWN') return;
 
     const isAiBetTurn = (phase === 'BET1' || phase === 'BET2') && turnIdx === 1;
     const isAiChoiceSetup = phase === 'CHOICE_SETUP' && dealerIdx === 1;
@@ -1010,8 +1229,7 @@
           handleAction('fold');
         } else if (maxRaise >= 1 && Math.random() < 0.3) {
           const aiRaise = Math.min(maxRaise, Math.floor(Math.random() * 2) + 1);
-          document.getElementById("raiseNumber").value = aiRaise;
-          handleAction('raise');
+          handleAction('raise', aiRaise);
         } else {
           handleAction('call');
         }
@@ -1036,45 +1254,48 @@
       carryEl.classList.add("hidden");
     }
 
-    document.getElementById("p1StartChips").innerText = p1.startChips;
-    document.getElementById("p1TotalBet").innerText = p1.totalRoundBet;
-    document.getElementById("p1Chips").innerText = p1.chips;
+    // 시점 전환: 내가 P1(호스트/싱글)인지 P2(게스트)인지에 따라 렌더링
+    const myPlayer = myPlayerIdx === 0 ? p1 : p2;
+    const oppPlayer = myPlayerIdx === 0 ? p2 : p1;
 
-    document.getElementById("p2StartChips").innerText = p2.startChips;
-    document.getElementById("p2TotalBet").innerText = p2.totalRoundBet;
-    document.getElementById("p2Chips").innerText = p2.chips;
+    document.getElementById("p1StartChips").innerText = myPlayer.startChips;
+    document.getElementById("p1TotalBet").innerText = myPlayer.totalRoundBet;
+    document.getElementById("p1Chips").innerText = myPlayer.chips;
 
-    renderChipStack('p1ChipStack', p1.chips, 'blue');
-    renderChipStack('p2ChipStack', p2.chips, 'blue');
+    document.getElementById("p2StartChips").innerText = oppPlayer.startChips;
+    document.getElementById("p2TotalBet").innerText = oppPlayer.totalRoundBet;
+    document.getElementById("p2Chips").innerText = oppPlayer.chips;
+
+    renderChipStack('p1ChipStack', myPlayer.chips, 'blue');
+    renderChipStack('p2ChipStack', oppPlayer.chips, 'blue');
     renderChipStack('potChipStack', pot, 'gold');
 
-    document.getElementById("p1Badge").className = `badge ${dealerIdx === 0 ? '' : 'hidden'}`;
-    document.getElementById("p2Badge").className = `badge ${dealerIdx === 1 ? '' : 'hidden'}`;
+    document.getElementById("p1Badge").className = `badge ${dealerIdx === myPlayerIdx ? '' : 'hidden'}`;
+    document.getElementById("p2Badge").className = `badge ${dealerIdx !== myPlayerIdx ? '' : 'hidden'}`;
 
-    document.getElementById("p1Box").className = `player-box ${turnIdx === 0 && phase.startsWith('BET') ? 'active-turn' : ''}`;
-    document.getElementById("p2Box").className = `player-box ${turnIdx === 1 && phase.startsWith('BET') ? 'active-turn' : ''}`;
+    document.getElementById("p1Box").className = `player-box ${turnIdx === myPlayerIdx && phase.startsWith('BET') ? 'active-turn' : ''}`;
+    document.getElementById("p2Box").className = `player-box ${turnIdx !== myPlayerIdx && phase.startsWith('BET') ? 'active-turn' : ''}`;
 
     const isShowdown = phase === 'SHOWDOWN' || phase === 'ROUND_OVER';
 
-    if (p1.hand.length > 0) {
-      const myEval = evaluateHand([...p1.hand, ...communityCards], p1.hand);
+    if (myPlayer.hand.length > 0) {
+      const myEval = evaluateHand([...myPlayer.hand, ...communityCards], myPlayer.hand);
       document.getElementById("myHandEval").innerText = `${RANK_NAMES[myEval.rank]}`;
     } else {
       document.getElementById("myHandEval").innerText = `-`;
     }
 
-    renderCards("p1Cards", p1.hand);
-    renderCards("p2Cards", isShowdown ? p2.hand : p2.hand.map(() => '?'));
+    renderCards("p1Cards", myPlayer.hand);
+    renderCards("p2Cards", isShowdown ? oppPlayer.hand : oppPlayer.hand.map(() => '?'));
     renderCards("communityCards", communityCards);
 
-    const current = turnIdx === 0 ? p1 : p2;
-    const opponent = turnIdx === 0 ? p2 : p1;
-    const dealerName = dealerIdx === 0 ? p1.name : p2.name;
+    const isMyTurn = turnIdx === myPlayerIdx;
+    const isMyDealer = dealerIdx === myPlayerIdx;
 
-    if (phase === 'BET1') document.getElementById("txtStatus").innerText = `[1차] ${current.name} 차례 (선:${dealerName})`;
-    else if (phase === 'CHOICE_SETUP') document.getElementById("txtStatus").innerText = `[초이스] 선(${dealerName}) 공개 선택`;
-    else if (phase === 'CHOICE_PICK') document.getElementById("txtStatus").innerText = `[초이스] 후(${turnIdx === 0 ? p1.name : p2.name}) 카드 선택`;
-    else if (phase === 'BET2') document.getElementById("txtStatus").innerText = `[2차] ${current.name} 차례`;
+    if (phase === 'BET1') document.getElementById("txtStatus").innerText = `[1차] ${isMyTurn ? '👉 내 차례' : '상대 차례'} (선:${isMyDealer ? '나' : '상대'})`;
+    else if (phase === 'CHOICE_SETUP') document.getElementById("txtStatus").innerText = `[초이스] 선(${isMyDealer ? '나' : '상대'}) 공개 선택`;
+    else if (phase === 'CHOICE_PICK') document.getElementById("txtStatus").innerText = `[초이스] 후(${!isMyDealer ? '나' : '상대'}) 카드 선택`;
+    else if (phase === 'BET2') document.getElementById("txtStatus").innerText = `[2차] ${isMyTurn ? '👉 내 차례' : '상대 차례'}`;
     else if (phase === 'SHOWDOWN') document.getElementById("txtStatus").innerText = `쇼다운...`;
     else if (phase === 'ROUND_OVER') document.getElementById("txtStatus").innerText = `라운드 종료`;
     else if (phase === 'GAME_OVER') document.getElementById("txtStatus").innerText = `게임 종료`;
@@ -1082,9 +1303,9 @@
     const choiceArea = document.getElementById("choiceArea");
     if (phase === 'CHOICE_SETUP') {
       choiceArea.classList.remove("hidden");
-      if (dealerIdx === 0) {
+      if (isMyDealer) {
         document.getElementById("choiceTitle").innerText = `공개(앞면)할 카드 1장 선택:`;
-        renderChoiceCards(choiceCards, (idx) => handleChoiceSetup(idx), true);
+        renderChoiceCards(choiceCards, (idx) => onHumanChoiceSetup(idx), true);
       } else {
         document.getElementById("choiceTitle").innerText = `상대가 공개 카드를 선택 중...`;
         renderChoiceCards(['?', '?'], null, false);
@@ -1092,9 +1313,9 @@
     } else if (phase === 'CHOICE_PICK') {
       choiceArea.classList.remove("hidden");
       const displayCards = choiceCards.map((c, i) => i === choiceOpenIdx ? c : '?');
-      if (turnIdx === 0) {
+      if (!isMyDealer) {
         document.getElementById("choiceTitle").innerText = `가져갈 카드 1장 선택:`;
-        renderChoiceCards(displayCards, (idx) => handleChoicePick(idx), true);
+        renderChoiceCards(displayCards, (idx) => onHumanChoicePick(idx), true);
       } else {
         document.getElementById("choiceTitle").innerText = `상대가 카드를 선택 중...`;
         renderChoiceCards(displayCards, null, false);
@@ -1103,26 +1324,26 @@
       choiceArea.classList.add("hidden");
     }
 
-    const isHumanTurn = (!isPve || turnIdx === 0) && (phase === 'BET1' || phase === 'BET2');
-    const isOpeningBet = current.currentBet === 0 && opponent.currentBet === 0;
+    const isHumanBetPhase = isMyTurn && (phase === 'BET1' || phase === 'BET2');
+    const isOpeningBet = myPlayer.currentBet === 0 && oppPlayer.currentBet === 0;
 
     const btnCall = document.getElementById("btnCall");
     const btnFold = document.getElementById("btnFold");
     const raiseLabel = document.getElementById("raiseLabel");
 
     if (isOpeningBet) {
-      btnCall.innerText = current.chips <= 1 ? `올인 1` : "베팅 1";
+      btnCall.innerText = myPlayer.chips <= 1 ? `올인 1` : "베팅 1";
       btnFold.disabled = true;
       raiseLabel.innerText = "베팅:";
     } else {
-      const diff = opponent.currentBet - current.currentBet;
-      btnCall.innerText = current.chips <= diff ? `올인 콜 (${current.chips})` : `콜 (${diff})`;
-      btnFold.disabled = !isHumanTurn;
+      const diff = oppPlayer.currentBet - myPlayer.currentBet;
+      btnCall.innerText = myPlayer.chips <= diff ? `올인 콜 (${myPlayer.chips})` : `콜 (${diff})`;
+      btnFold.disabled = !isHumanBetPhase;
       raiseLabel.innerText = "추가:";
     }
 
-    const diff = opponent.currentBet - current.currentBet;
-    const maxRaiseAllowed = isOpeningBet ? current.chips : (current.chips - diff);
+    const diff = oppPlayer.currentBet - myPlayer.currentBet;
+    const maxRaiseAllowed = isOpeningBet ? myPlayer.chips : (myPlayer.chips - diff);
 
     const slider = document.getElementById("raiseSlider");
     const num = document.getElementById("raiseNumber");
@@ -1138,10 +1359,10 @@
       syncRaiseValue(num.value || 1);
     }
 
-    const canRaise = isHumanTurn && maxRaiseAllowed >= 1 && (isOpeningBet ? current.chips > 1 : current.chips > diff);
-    btnCall.disabled = !isHumanTurn;
+    const canRaise = isHumanBetPhase && maxRaiseAllowed >= 1 && (isOpeningBet ? myPlayer.chips > 1 : myPlayer.chips > diff);
+    btnCall.disabled = !isHumanBetPhase;
     document.getElementById("btnRaise").disabled = !canRaise;
-    document.getElementById("raiseContainer").style.display = (isHumanTurn && canRaise) ? "block" : "none";
+    document.getElementById("raiseContainer").style.display = (isHumanBetPhase && canRaise) ? "block" : "none";
   }
 
   function renderCards(targetId, cardList) {
